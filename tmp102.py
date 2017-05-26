@@ -27,7 +27,7 @@ class TMP102(object):
     def getTemperature(self):
         data = self.readSensor()
 
-        tempC = (((data[0] << 8) | data[1]) >> 4)*0.625
+        tempC = int((((data[0] << 4) | data[1]) >> 4))*0.625
         tempConvert = {
             'C': lambda x: x,
             'K': lambda x: x+273.15,
