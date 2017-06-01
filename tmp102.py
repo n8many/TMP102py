@@ -55,7 +55,7 @@ class TMP102(object):
         data[1] = ((res & (2**(4 + ext)-1)) << (4 - ext)) | ext
         return data
 
-    def extractConfig(self, num, location, length):
+    def extractConfig(self, num, location=0, length=0):
 
         data = self.bus.read_i2c_block_data(self.address, CONFIG_REG, 2)
         if (num == 3):
@@ -73,12 +73,13 @@ class TMP102(object):
         data[num] |= setting
         self.bus.write_i2c_block_data(self.address, CONFIG_REG, data)
 
-    def readTemperature(self):
+    def readTemperature(self, units=None):
         data = self.bus.read_i2c_block_data(self.address, TEMPERATURE_REG, 2)
         tempC = self.bytesToTemp(data)
+        units = units or self.units
 
         try:
-            tempOut = tempConvert[self.units](tempC)
+            tempOut = tempConvert[units](tempC)
         except:
             raise ValueError('Invalid Units "' + self.units + '"')
         return tempOut
@@ -134,10 +135,11 @@ class TMP102(object):
         # 1 : Thermostat Mode (Active if over T_High, reset on read)
         self.injectConfig(mode, 0, 1, 1)
 
-    def setBoundTemp(self, high, temperature):
+    def setBoundTemp(self, upper, temperature, units=None):
+        units = units or self.units
         ext = self.extractConfig(1, 4, 1)
         try:
-            temperature = tempConvertInv[self.units](temperature)
+            temperature = tempConvertInv[units](temperature)
         except:
             raise ValueError('Invalid Units "' + self.units + '"')
         if (ext is 1 and temperature > 150):
@@ -146,15 +148,16 @@ class TMP102(object):
             temperature = -55
         data = self.tempToBytes(temperature)
 
-        if (high):
+        if (upper):
             reg = T_HIGH_REG
         else:
             reg = T_LOW_REG
 
         self.bus.write_i2c_block_data(self.address, reg, data)
 
-    def getBoundTemp(self, high):
-        if (high):
+    def getBoundTemp(self, upper, units=None):
+        units = units or self.units
+        if (upper):
             reg = T_HIGH_REG
         else:
             reg = T_LOW_REG
@@ -162,7 +165,7 @@ class TMP102(object):
         tempC = self.bytesToTemp(data)
 
         try:
-            tempOut = tempConvert[self.units](tempC)
+            tempOut = tempConvert[units](tempC)
         except:
             raise ValueError('Invalid Units "' + self.units + '"')
         return tempOut
