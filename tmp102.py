@@ -17,7 +17,7 @@ class TMP102(object):
 
         self.setUnits(units)
         self.bus = smbus.SMBus(self.busnum)
-        self.readSensor()
+        self.getTemperature()
 
     def getUnits(self):
         return self.units
@@ -29,14 +29,17 @@ class TMP102(object):
             raise ValueError("Invalid Unit, must use C(elcius), K(elvin),"
                     "F(ahrenheit), or R(ankine)")
 
-    def readSensor(self):
-        data = self.bus.read_i2c_block_data(0x48, 0)
-        return data
-
     def getTemperature(self):
-        data = self.readSensor()
+        data = self.bus.read_i2c_block_data(self.address, TEMPERTAURE_REG, 2)
 
-        tempC = int((((data[0] << 4) | data[1]) >> 4))*0.625
+        #Adjustment for extended mode
+        ext = data[1] & 0x01
+        res = int((data[0] << (4+ext)) + (data[1] >> (4-ext)))
+
+        if (data[0] | 0x7F is 0xFF):
+            res = res - 4096*(2**ext)
+
+        tempC = res*0.0625
         tempConvert = {
             'C': lambda x: x,
             'K': lambda x: x+273.15,
@@ -48,3 +51,39 @@ class TMP102(object):
         except:
             raise ValueError('Invalid Units "' + self.units + '"')
         return tempOut
+
+    def setConversionRate(self, rate):
+        pass
+
+    def setExtendedMode(self, mode):
+        pass
+
+    def sleep(self):
+        pass
+
+    def wakeup(self):
+        pass
+
+    def setAlertPolarity(self, polarity):
+        pass
+
+    def alert(self):
+        pass
+
+    def setLowTemp(self, temperature):
+        pass
+
+    def setHighTemp(self, temperature):
+        pass
+
+    def readLowTemp(self):
+        pass
+
+    def readHighTemp(self):
+        pass
+
+    def setFault(self, faultSetting):
+        pass
+
+    def setAlertMode(self, mode):
+        pass
