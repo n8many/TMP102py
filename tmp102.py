@@ -1,12 +1,25 @@
 import smbus
 
-TEMPERTAURE_REG = 0x00
+TEMPERATURE_REG = 0x00
 CONFIG_REG = 0x01
 T_LOW_REG = 0x02
 T_HIGH_REG = 0x03
 
 ADDRESSES = [0x48, 0x49, 0x4A, 0x4B]
 
+tempConvert = {
+    'C': lambda x: x,
+    'K': lambda x: x+273.15,
+    'F': lambda x: x*9/5+32,
+    'R': lambda x: (x+273.15)*9/5
+}
+
+tempConvertInv = {
+    'C': lambda x: x,
+    'K': lambda x: x-273.15,
+    'F': lambda x: (x-32)*5/9,
+    'R': lambda x: (x*5/9)-273.15
+}
 class TMP102(object):
     def __init__(self, units=None, address=0x48, busnum=1):
         units = units or 'C'
@@ -19,23 +32,45 @@ class TMP102(object):
         self.bus = smbus.SMBus(self.busnum)
         self.readTemperature()
 
-    def readTemperature(self):
-        data = self.bus.read_i2c_block_data(self.address, TEMPERTAURE_REG, 2)
-
-        #Adjustment for extended mode
+    def bytesToTemp(self, data):
+        # Adjustment for extended mode
         ext = data[1] & 0x01
         res = int((data[0] << (4+ext)) + (data[1] >> (4-ext)))
 
         if (data[0] | 0x7F is 0xFF):
+            # Perform 2's complement operation (x = x-2^bits)
             res = res - 4096*(2**ext)
+        # Outputs temperature in degC
+        return res*0.0625
 
-        tempC = res*0.0625
-        tempConvert = {
-            'C': lambda x: x,
-            'K': lambda x: x+273.15,
-            'F': lambda x: x*9/5+32,
-            'R': lambda x: (x+273.15)*9/5
-        }
+    def tempToBytes(self, temp):
+        # Temp MUST be converted prior to input
+        data = [0 , 0]
+        res = int(temp/0.0625)
+        ext = self.extractConfig(1, 4, 1)
+        if (res < 0):
+            res = res + 4096 * (2**ext)
+        data[0] = (res >> (4 + ext)) & 0xFF
+        data[1] = (res & (2^(4 + ext)-1) << (4 - ext)) | ext
+        return data
+
+    def extractConfig(self, num, location, length):
+        mask = 2**length - 1
+        data = self.bus.read_i2c_block_data(self.address, CONFIG_REG, 2)
+        return (data[num] >> location) & mask
+
+    def injectConfig(self, setting, num, location, length):
+        mask = (2**length - 1) << location
+        setting = (setting << location) & mask
+        data = self.bus.read_i2c_block_data(self.address, CONFIG_REG, 2)
+        data[num] &= ~mask
+        data[num] |= setting
+        self.bus.write_i2c_block_data(self.address, CONFIG_REG, data)
+
+    def readTemperature(self):
+        data = self.bus.read_i2c_block_data(self.address, TEMPERATURE_REG, 2)
+        tempC = self.bytesToTemp(data)
+
         try:
             tempOut = tempConvert[self.units](tempC)
         except:
@@ -52,23 +87,46 @@ class TMP102(object):
             raise ValueError("Invalid Unit, must use C(elcius), K(elvin),"
                     "F(ahrenheit), or R(ankine)")
 
+
+
     def setConversionRate(self, rate):
-        pass
+        # 0 : 0.25 Hz
+        # 1 : 1 Hz
+        # 2 : 4 Hz (default)
+        # 3 : 8 Hz
+        self.injectConfig(rate, 1, 6, 2)
 
     def setExtendedMode(self, mode):
-        pass
+        # 0 : 12-bit ( -55C to 128C)
+        # 1 : 13-bit ( -55C to 150C)
+
+        self.injectConfig(mode, 1, 4, 1)
 
     def sleep(self):
-        pass
+        self.injectConfig(True, 0, 0, 1)
 
     def wakeup(self):
-        pass
+        self.injectConfig(False, 0, 0, 1)
 
     def setAlertPolarity(self, polarity):
-        pass
+        # 0 : Active Low
+        # 1 : Active High
+        self.injectConfig(polarity, 0, 2, 1)
 
     def alert(self):
-        pass
+        return extractConfig(1, 5, 1)
+
+    def setFault(self, faultSetting):
+        # 0 : 1 fault
+        # 1 : 2 faults
+        # 2 : 4 faults
+        # 3 : 6 faults
+        self.injectConfig(faultSetting, 0, 3, 2)
+
+    def setAlertMode(self, mode):
+        # 0 : Comparator Mode (Active within temp range)
+        # 1 : Thermostat Mode (Active if over T_High, reset on read)
+        self.injectConfig(mode, 0, 1, 1)
 
     def setLowTemp(self, temperature):
         pass
@@ -80,10 +138,4 @@ class TMP102(object):
         pass
 
     def readHighTemp(self):
-        pass
-
-    def setFault(self, faultSetting):
-        pass
-
-    def setAlertMode(self, mode):
         pass
