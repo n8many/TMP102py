@@ -34,7 +34,8 @@ class TMP102(object):
 
     def bytesToTemp(self, data):
         # Adjustment for extended mode
-        ext = data[1] & 0x01
+        ext = self.extractConfig(1, 4, 1)
+        #ext = data[1] & 0x01
         res = int((data[0] << (4+ext)) + (data[1] >> (4-ext)))
 
         if (data[0] | 0x7F is 0xFF):
@@ -51,13 +52,18 @@ class TMP102(object):
         if (res < 0):
             res = res + 4096 * (2**ext)
         data[0] = (res >> (4 + ext)) & 0xFF
-        data[1] = (res & (2^(4 + ext)-1) << (4 - ext)) | ext
+        data[1] = ((res & (2**(4 + ext)-1)) << (4 - ext)) | ext
         return data
 
     def extractConfig(self, num, location, length):
-        mask = 2**length - 1
+
         data = self.bus.read_i2c_block_data(self.address, CONFIG_REG, 2)
-        return (data[num] >> location) & mask
+        if (num == 3):
+            #Full register dump
+            return data
+        else:
+            mask = 2**length - 1
+            return (data[num] >> location) & mask
 
     def injectConfig(self, setting, num, location, length):
         mask = (2**length - 1) << location
@@ -128,14 +134,35 @@ class TMP102(object):
         # 1 : Thermostat Mode (Active if over T_High, reset on read)
         self.injectConfig(mode, 0, 1, 1)
 
-    def setLowTemp(self, temperature):
-        pass
+    def setBoundTemp(self, high, temperature):
+        ext = self.extractConfig(1, 4, 1)
+        try:
+            temperature = tempConvertInv[self.units](temperature)
+        except:
+            raise ValueError('Invalid Units "' + self.units + '"')
+        if (ext is 1 and temperature > 150):
+            temperature = 150
+        elif (temperature < -55):
+            temperature = -55
+        data = self.tempToBytes(temperature)
 
-    def setHighTemp(self, temperature):
-        pass
+        if (high):
+            reg = T_HIGH_REG
+        else:
+            reg = T_LOW_REG
 
-    def readLowTemp(self):
-        pass
+        self.bus.write_i2c_block_data(self.address, reg, data)
 
-    def readHighTemp(self):
-        pass
+    def getBoundTemp(self, high):
+        if (high):
+            reg = T_HIGH_REG
+        else:
+            reg = T_LOW_REG
+        data = self.bus.read_i2c_block_data(self.address, reg, 2)
+        tempC = self.bytesToTemp(data)
+
+        try:
+            tempOut = tempConvert[self.units](tempC)
+        except:
+            raise ValueError('Invalid Units "' + self.units + '"')
+        return tempOut
