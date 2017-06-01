@@ -49,7 +49,7 @@ If you would like to get a temperature reading, then use:
 
 ## Credits
 
-Most of this code is being copied and translated from the original sparkfun library here: https://github.com/sparkfun/SparkFun_TMP102_Arduino_Library
+Most of this code is being translated from the original Sparkfun library here: https://github.com/sparkfun/SparkFun_TMP102_Arduino_Library
 
 ## License
 
