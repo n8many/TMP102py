@@ -17,19 +17,9 @@ class TMP102(object):
 
         self.setUnits(units)
         self.bus = smbus.SMBus(self.busnum)
-        self.getTemperature()
+        self.readTemperature()
 
-    def getUnits(self):
-        return self.units
-
-    def setUnits(self, units):
-        if (units.upper() in 'RCKF' and len(units) == 1):
-            self.units = units.upper()
-        else:
-            raise ValueError("Invalid Unit, must use C(elcius), K(elvin),"
-                    "F(ahrenheit), or R(ankine)")
-
-    def getTemperature(self):
+    def readTemperature(self):
         data = self.bus.read_i2c_block_data(self.address, TEMPERTAURE_REG, 2)
 
         #Adjustment for extended mode
@@ -51,6 +41,16 @@ class TMP102(object):
         except:
             raise ValueError('Invalid Units "' + self.units + '"')
         return tempOut
+
+    def getUnits(self):
+        return self.units
+
+    def setUnits(self, units):
+        if (units.upper() in 'RCKF' and len(units) == 1):
+            self.units = units.upper()
+        else:
+            raise ValueError("Invalid Unit, must use C(elcius), K(elvin),"
+                    "F(ahrenheit), or R(ankine)")
 
     def setConversionRate(self, rate):
         pass

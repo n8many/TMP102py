@@ -8,6 +8,5 @@ tmp = TMP102('C', 0x48, 1)
 tmp.setUnits('F')
 
 while True:
-    print "Current temp: {:.1f}degF".format(tmp.getTemperature())
+    print "Current temp: {:.1f}degF".format(tmp.readTemperature())
     time.sleep(1)
-

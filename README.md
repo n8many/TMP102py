@@ -11,9 +11,9 @@ Written for the Raspberry Pi, but should work on other Linux based computers so 
 2. Install the smbus library (via pip)
 3. Add this library to your project. You can either...
    * Clone this repo to your project via:
-   
+
        ```git clone https://github.com/n8many/TMP102py.git```
-       
+
    * Or download "tmp102.py" to have the code in your project base directory.
 
 
@@ -41,7 +41,7 @@ If you would like to change the output units after initialzing an object, you ca
 
 If you would like to get a temperature reading, then use:
 
-```tmp.getTemperature()```
+```tmp.readTemperature()```
 
 ## History
 
@@ -49,8 +49,7 @@ If you would like to get a temperature reading, then use:
 
 ## Credits
 
-Sensor calculations from: https://blogspot.tenettech.com/reading-temperature-from-tmp102-temperature-sensor-using-raspberry-pi.html
-Also a great resource on how to enable I2C on your Raspberry Pi, if you have not already done that.
+
 
 ## License
 
